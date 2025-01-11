@@ -2,6 +2,15 @@
 
 This project implements a personalized product recommendation system using a pre-trained large language model (LLM).
 
+---
+
+## **Usuage**
+1. Create a virtual environment and activate it.
+2. Install dependencies: `pip install -r requirements.txt`.
+3. Run the application: `uvicorn main:app --reload`.
+
+---
+
 ## **Overview**
 The system includes the following key components:
 1. **User Management**: Handles user registration and retrieval.
