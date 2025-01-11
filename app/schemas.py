@@ -36,3 +36,18 @@ class ProductResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class FeedbackCreate(BaseModel):
+    product_id: int
+    rating: int
+    comment: Optional[str] = None
+
+class FeedbackResponse(BaseModel):
+    id: int
+    user_id: int
+    product_id: int
+    rating: int
+    comment: Optional[str]
+
+    class Config:
+        from_attributes = True
