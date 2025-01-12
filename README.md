@@ -1,13 +1,28 @@
 # LLM-based Product Recommendation System
 
-This project implements a personalized product recommendation system using a pre-trained large language model (LLM).
+This project implements a personalized product recommendation system enhanced by a **Large Language Model (LLM)** and **embedding-based ranking** for accurate, context-aware recommendations.
 
 ---
 
-## **Usuage**
-1. Create a virtual environment and activate it.
-2. Install dependencies: `pip install -r requirements.txt`.
-3. Run the application: `uvicorn main:app --reload`.
+## **Usage**
+1. **Create and activate a virtual environment**:
+   ```bash
+   python -m venv venv
+   source venvbin/activate  
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the application**:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+4. **Access the API documentation**:
+   - Open your browser and go to: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 
@@ -15,7 +30,7 @@ This project implements a personalized product recommendation system using a pre
 The system includes the following key components:
 1. **User Management**: Handles user registration and retrieval.
 2. **Product Management**: Enables adding and listing products.
-3. **Recommendation Engine**: Provides personalized product recommendations.
+3. **Recommendation Engine**: Matches user preferences with products and ranks them using LLMs and embeddings.
 4. **Feedback System**: Allows users to submit feedback to improve recommendations.
 
 ---
@@ -136,39 +151,35 @@ The system includes the following key components:
 ### **3. Recommendation Engine (`recommendation.py`)**
 
 #### **GET /recommendations/{user_id}**
-- **Purpose**: Provide personalized product recommendations for a user.
+- **Purpose**: Provide personalized recommendations for a user.
 - **Input**: User ID (e.g., `1`).
 - **Process**:
   1. Fetches the user's preferences:
      - **Category**: The primary category for recommendations (e.g., `electronics`).
-     - **Price Range**: Preferred price range for products (e.g., `[500, 1500]`).
-     - **Brands**: Preferred brands or keywords (e.g., `["Laptop", "Tablet"]`).
+     - **Price Range**: Filters products within the user's budget (e.g., `[500, 1500]`).
+     - **Brands**: Matches user-specified brands or keywords (e.g., `["Laptop", "Tablet"]`).
   2. Queries the database for products matching the category.
-  3. Scores each product based on:
-     - **Price**: Adds points if the product falls within the preferred price range.
-     - **Brand Match**: Adds points if the product name matches any preferred brands.
-  4. Ranks products by their scores.
+  3. Uses **sentence-transformers** to compute similarity scores between user preferences and product descriptions.
+  4. Ranks products by similarity scores for better relevance.
 - **Output**:
   ```json
   {
     "user_id": 1,
     "preferred_category": "electronics",
-    "recommendations": [
+    "ranked_products": [
       {
         "id": 1,
         "name": "Laptop X1",
         "description": "High-performance laptop",
         "price": 1200,
-        "category": "electronics",
-        "score": 3
+        "category": "electronics"
       },
       {
         "id": 2,
         "name": "Tablet Pro",
         "description": "Lightweight and powerful",
         "price": 800,
-        "category": "electronics",
-        "score": 2
+        "category": "electronics"
       }
     ]
   }
@@ -188,7 +199,6 @@ The system includes the following key components:
     "comment": "Excellent product!"
   }
   ```
-  URL parameter: `user_id=1`.
 - **Process**:
   - Validates if the user and product exist in the database.
   - Saves the feedback with the user ID, product ID, rating, and optional comment.
@@ -205,17 +215,12 @@ The system includes the following key components:
 
 ---
 
-### **5. Feedback-Enhanced Recommendations**
-- The **recommendation engine** adjusts product scores based on feedback.
-- Products with higher average ratings are ranked higher in recommendations.
+## **Technologies Used**
 
----
-
-## **Summary**
-
-- **User Management**: Handles user registration, preferences, and retrieval.
-- **Product Management**: Allows adding and listing products.
-- **Recommendation Engine**: Matches user preferences with products and ranks them based on scores and feedback.
-- **Feedback System**: Collects user ratings and comments to refine recommendations.
+1. **FastAPI**: Framework for building APIs.
+2. **SQLAlchemy**: ORM for database management.
+3. **bcrypt**: For password hashing.
+4. **Transformers**: Hugging Face library for integrating Large Language Models.
+5. **Sentence-Transformers**: For semantic similarity scoring.
 
 ---
