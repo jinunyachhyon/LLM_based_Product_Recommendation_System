@@ -2,13 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
+from app.utils.llm import LLMRecommender
 import json
 
+# Initialize the router
 router = APIRouter()
+
+# Initialize the embedding-based LLM recommender
+llm_recommender = LLMRecommender(model_name="all-MiniLM-L6-v2")  # A lightweight sentence-transformer model
 
 @router.get("/recommendations/{user_id}")
 def get_recommendations(user_id: int, db: Session = Depends(get_db)):
-    # Fetch user by ID
+    # Step 1: Fetch the user and validate
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -17,54 +22,39 @@ def get_recommendations(user_id: int, db: Session = Depends(get_db)):
     user_preferences = json.loads(user.preferences) if user.preferences else {}
     preferred_category = user_preferences.get("category")
     price_range = user_preferences.get("price_range", [0, float("inf")])
-    preferred_brands = user_preferences.get("brands", [])
-
     if not preferred_category:
-        raise HTTPException(status_code=400, detail="User preferences are incomplete")
+        raise HTTPException(status_code=400, detail="No preferences found for user")
 
-    # Fetch products matching the category
+    # Step 2: Fetch products matching the preferred category
     products = db.query(models.Product).filter(models.Product.category == preferred_category).all()
-
     if not products:
         return {"user_id": user_id, "message": "No products found for the preferred category"}
 
-    # Scoring function
-    def score_product(product, user_id, db):
-        score = 0
-        feedback = db.query(models.Feedback).filter(models.Feedback.product_id == product.id).all()
+    # Step 3: Prepare preferences and product descriptions for ranking
+    preferences_text = f"User preferences: {json.dumps(user_preferences)}"
+    product_descriptions = [f"{p.name}: {p.description}" for p in products]
 
-        # Base score for price and brand match
-        if product.price >= price_range[0] and product.price <= price_range[1]:
-            score += 1
-        if any(brand.lower() in product.name.lower() for brand in preferred_brands):
-            score += 2
+    # Step 4: Use the embedding-based LLM to rank products
+    ranked_products = llm_recommender.rank_products(preferences_text, product_descriptions)
 
-        # Adjust score based on average product rating
-        if feedback:
-            avg_rating = sum(f.rating for f in feedback) / len(feedback)
-            score += avg_rating  # Higher rating increases score
-
-        return score
-
-    # Rank products by score
-    scored_products = [{"product": product, "score": score_product(product, user_id, db)} for product in products]
-    ranked_products = sorted(scored_products, key=lambda x: x["score"], reverse=True)
-
-    # Format the response
-    recommendations = [
-        {
-            "id": p["product"].id,
-            "name": p["product"].name,
-            "description": p["product"].description,
-            "price": p["product"].price,
-            "category": p["product"].category,
-            "score": p["score"],
-        }
-        for p in ranked_products
-    ]
+    # Step 5: Format the ranked products for the response
+    response_products = []
+    for product_text in ranked_products:
+        product_name = product_text.split(":")[0]  # Extract product name
+        matching_product = next((p for p in products if p.name == product_name), None)
+        if matching_product:
+            response_products.append(
+                {
+                    "id": matching_product.id,
+                    "name": matching_product.name,
+                    "description": matching_product.description,
+                    "price": matching_product.price,
+                    "category": matching_product.category,
+                }
+            )
 
     return {
         "user_id": user_id,
         "preferred_category": preferred_category,
-        "recommendations": recommendations,
+        "ranked_products": response_products,
     }
